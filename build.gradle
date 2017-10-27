@@ -1,0 +1,66 @@
+buildscript {
+	ext {
+		springBootVersion = '1.5.8.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath('se.transmode.gradle:gradle-docker:1.2')
+    }
+}
+
+apply plugin: 'org.springframework.boot'
+apply plugin: 'groovy'
+apply plugin: 'docker'
+
+group = 'docker-group-goes-here'
+
+jar {
+    baseName = 'config-server'
+    version = '1.0.0'
+}
+
+//project version is used in the buildDocker task to tag the container image
+project.version = project.findProperty('tag') ?: jar.version
+
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	springCloudVersion = 'Dalston.SR4'
+}
+
+dependencies {
+	compile('org.springframework.cloud:spring-cloud-config-server')
+    compile("org.springframework.boot:spring-boot-starter-security")
+
+    compile('org.codehaus.groovy:groovy')
+
+	testCompile('org.springframework.boot:spring-boot-starter-test')
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+// tag::DOCKER
+task buildDocker(type: Docker, dependsOn: build) {
+    push = project.findProperty('push')?.toBoolean() ?: false
+    maintainer = 'maintainer name here'
+    applicationName = jar.baseName
+    dockerfile = file('src/main/docker/Dockerfile')
+    doFirst {
+        copy {
+            from jar
+            into "build/docker/target"
+        }
+    }
+}
+// end::DOCKER
